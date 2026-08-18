@@ -35,7 +35,7 @@ class ComfoAirCoordinator(DataUpdateCoordinator[dict]):
 
     async def _async_update_data(self) -> dict:
         try:
-            return await self.hass.async_add_executor_job(self.client.poll_all)
+            return await self.hass.async_add_executor_job(self.client.poll_all, self.data)
         except ComfoAirError as err:
             raise UpdateFailed(f"Error comunicando con la ComfoAir: {err}") from err
 
@@ -81,7 +81,7 @@ class ComfoAirConfigCoordinator(DataUpdateCoordinator[dict]):
 
     async def _async_update_data(self) -> dict:
         try:
-            return await self.hass.async_add_executor_job(self.client.poll_config)
+            return await self.hass.async_add_executor_job(self.client.poll_config, self.data)
         except ComfoAirError as err:
             raise UpdateFailed(f"Error comunicando con la ComfoAir: {err}") from err
 

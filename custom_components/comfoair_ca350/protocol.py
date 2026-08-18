@@ -7,6 +7,7 @@ Validated against a real CA350 Luxe unit (firmware 3.70).
 from __future__ import annotations
 
 import logging
+import time
 
 import serial
 
@@ -46,7 +47,12 @@ COMFORT_TEMP_MAX = 25.0
 # The RS232 link is timing-sensitive: sending a new command while the unit is
 # still finishing a previous reply causes framing errors / dropped bytes.
 IDLE_TIMEOUT = 0.15
-DEFAULT_RETRIES = 2
+DEFAULT_RETRIES = 3
+# Delay before each retry (multiplied by attempt number), so a retry doesn't
+# land in the middle of the same EMI burst / busy period that caused the
+# original failure. Observed in practice: failures cluster in short bursts
+# rather than being purely independent per-attempt noise.
+RETRY_BACKOFF = 0.2
 
 LEVEL_AWAY = 1
 LEVEL_LOW = 2
@@ -98,6 +104,70 @@ _EWT_POSTHEATER_KEYS = (
     "ewt_speed_pct",
     "kitchen_hood_speed_pct",
     "postheater_target_temp",
+)
+
+# Per-group key sets, used by poll_all()/poll_config() to fall back to the
+# last known good value when a single group's query fails, instead of
+# failing (and blanking) the whole poll cycle over one transient glitch.
+_TEMP_KEYS = (
+    "comfort_temp",
+    "temp_outside",
+    "temp_supply",
+    "temp_extract",
+    "temp_exhaust",
+    "temp_ewt",
+    "temp_postheater",
+    "temp_kitchenhood",
+)
+_FAN_KEYS = ("fan_supply_pct", "fan_extract_pct", "fan_supply_rpm", "fan_extract_rpm")
+_VENT_KEYS = (
+    "extract_pct_away",
+    "extract_pct_low",
+    "extract_pct_medium",
+    "supply_pct_away",
+    "supply_pct_low",
+    "supply_pct_medium",
+    "extract_pct_current",
+    "supply_pct_current",
+    "ventilation_level",
+    "extract_fan_active",
+    "extract_pct_high",
+    "supply_pct_high",
+)
+_BYPASS_KEYS = ("bypass_pct", "summer_mode")
+_FAULTS_KEYS = ("errors", "filter_full")
+_INSTALL_KEYS = (
+    "preheater_present",
+    "bypass_present",
+    "unit_type",
+    "unit_size",
+    "option_fireplace",
+    "option_kitchen_hood",
+    "option_postheater",
+    "enthalpy_present",
+    "ewt_present",
+)
+_PREHEATER_STATUS_KEYS = (
+    "damper_status",
+    "frost_protection_active",
+    "preheater_active",
+    "frost_minutes",
+)
+_RF_STATUS_KEYS = ("rf_address", "rf_id")
+_ANALOG_CONFIG_KEYS = ("analog_priority",) + tuple(
+    f"{name}_{suffix}"
+    for name, _bit in _ANALOG_CHANNEL_BITS
+    for suffix in ("present", "regulating", "inverted", "min_pct", "max_pct", "setpoint_pct")
+)
+_OPERATING_HOURS_KEYS = (
+    "hours_away",
+    "hours_low",
+    "hours_medium",
+    "hours_frost_protection",
+    "hours_preheater",
+    "hours_bypass_open",
+    "hours_filter",
+    "hours_high",
 )
 
 
@@ -247,6 +317,8 @@ class ComfoAirClient:
             except ComfoAirError as err:
                 last_err = err
                 _LOGGER.debug("Fallo en intento %s de %s: %s", attempt + 1, cmd, err)
+                if attempt < retries:
+                    time.sleep(RETRY_BACKOFF * (attempt + 1))
         assert last_err is not None
         raise last_err
 
@@ -360,14 +432,36 @@ class ComfoAirClient:
     def start_selftest(self) -> None:
         self.query(CMD_RESET, [0, 0, 1, 0], expect_response=False)
 
-    def poll_all(self) -> dict:
+    def _safe_update(
+        self, data: dict, previous: dict | None, keys: tuple[str, ...], fn
+    ) -> None:
+        """Merge fn()'s result into data; fall back to previous on failure.
+
+        If a group's query fails but we already have a recent value for it
+        (from a prior successful poll), keep that stale-but-valid value
+        instead of failing the whole poll cycle over one transient glitch.
+        With no fallback available (e.g. the very first poll), the error is
+        re-raised so genuine connection problems still surface immediately.
+        """
+        try:
+            data.update(fn())
+        except ComfoAirError as err:
+            cached = {k: previous[k] for k in keys if previous and k in previous}
+            if not cached:
+                raise
+            _LOGGER.warning(
+                "Fallo leyendo %s, se mantiene el último valor conocido: %s", keys[0], err
+            )
+            data.update(cached)
+
+    def poll_all(self, previous: dict | None = None) -> dict:
         """Query every operational (fast-changing) value group."""
         data: dict = {}
-        data.update(self.get_temperatures())
-        data.update(self.get_fan_status())
-        data.update(self.get_ventilation_status())
-        data.update(self.get_bypass_status())
-        data.update(self.get_faults())
+        self._safe_update(data, previous, _TEMP_KEYS, self.get_temperatures)
+        self._safe_update(data, previous, _FAN_KEYS, self.get_fan_status)
+        self._safe_update(data, previous, _VENT_KEYS, self.get_ventilation_status)
+        self._safe_update(data, previous, _BYPASS_KEYS, self.get_bypass_status)
+        self._safe_update(data, previous, _FAULTS_KEYS, self.get_faults)
         return data
 
     # -- Installation / configuration data (slow-polled) --------------------
@@ -497,18 +591,18 @@ class ComfoAirClient:
             "hours_high": be(d[17:20]),
         }
 
-    def poll_config(self) -> dict:
+    def poll_config(self, previous: dict | None = None) -> dict:
         """Query every installation/configuration value group.
 
         These barely change between visits to the wall control's install
         menu, so they are polled far less often than poll_all().
         """
         data: dict = {}
-        data.update(self.get_delays())
-        data.update(self.get_install_status())
-        data.update(self.get_preheater_status())
-        data.update(self.get_rf_status())
-        data.update(self.get_analog_config())
-        data.update(self.get_ewt_postheater())
-        data.update(self.get_operating_hours())
+        self._safe_update(data, previous, _DELAY_KEYS, self.get_delays)
+        self._safe_update(data, previous, _INSTALL_KEYS, self.get_install_status)
+        self._safe_update(data, previous, _PREHEATER_STATUS_KEYS, self.get_preheater_status)
+        self._safe_update(data, previous, _RF_STATUS_KEYS, self.get_rf_status)
+        self._safe_update(data, previous, _ANALOG_CONFIG_KEYS, self.get_analog_config)
+        self._safe_update(data, previous, _EWT_POSTHEATER_KEYS, self.get_ewt_postheater)
+        self._safe_update(data, previous, _OPERATING_HOURS_KEYS, self.get_operating_hours)
         return data

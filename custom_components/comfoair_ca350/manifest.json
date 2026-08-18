@@ -1,0 +1,11 @@
+{
+  "domain": "comfoair_ca350",
+  "name": "Zehnder ComfoAir 350",
+  "codeowners": ["@txubelaxu"],
+  "config_flow": true,
+  "documentation": "https://github.com/txubelaxu/ha-comfoair-ca350",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/txubelaxu/ha-comfoair-ca350/issues",
+  "requirements": ["pyserial==3.5"],
+  "version": "0.1.0"
+}

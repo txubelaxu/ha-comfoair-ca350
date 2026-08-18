@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Introduce el puerto serie al que está conectada la interfaz RS232 de la ComfoAir.",
+        "data": {
+          "port": "Puerto serie"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se pudo comunicar con una unidad ComfoAir en ese puerto."
+    },
+    "abort": {
+      "already_configured": "Este puerto ya está configurado."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "comfort_temp": { "name": "Temperatura de confort" },
+      "temp_outside": { "name": "Temperatura exterior" },
+      "temp_supply": { "name": "Temperatura de impulsión" },
+      "temp_extract": { "name": "Temperatura de extracción" },
+      "temp_exhaust": { "name": "Temperatura de expulsión" },
+      "fan_supply_pct": { "name": "Velocidad ventilador impulsión" },
+      "fan_extract_pct": { "name": "Velocidad ventilador extracción" },
+      "fan_supply_rpm": { "name": "RPM ventilador impulsión" },
+      "fan_extract_rpm": { "name": "RPM ventilador extracción" },
+      "bypass_pct": { "name": "Posición del bypass" },
+      "errors": { "name": "Errores activos" }
+    },
+    "binary_sensor": {
+      "filter_full": { "name": "Filtro" }
+    },
+    "select": {
+      "ventilation_level": {
+        "name": "Nivel de ventilación",
+        "state": {
+          "away": "Ausente",
+          "low": "Bajo",
+          "medium": "Medio",
+          "high": "Alto"
+        }
+      }
+    }
+  }
+}

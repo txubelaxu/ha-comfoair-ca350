@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Enter the serial port the Zehnder ComfoAir RS232 interface is connected to.",
+        "data": {
+          "port": "Serial port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not communicate with a ComfoAir unit on that port."
+    },
+    "abort": {
+      "already_configured": "This port is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "comfort_temp": { "name": "Comfort temperature" },
+      "temp_outside": { "name": "Outside temperature" },
+      "temp_supply": { "name": "Supply temperature" },
+      "temp_extract": { "name": "Extract temperature" },
+      "temp_exhaust": { "name": "Exhaust temperature" },
+      "fan_supply_pct": { "name": "Supply fan speed" },
+      "fan_extract_pct": { "name": "Extract fan speed" },
+      "fan_supply_rpm": { "name": "Supply fan RPM" },
+      "fan_extract_rpm": { "name": "Extract fan RPM" },
+      "bypass_pct": { "name": "Bypass position" },
+      "errors": { "name": "Active errors" }
+    },
+    "binary_sensor": {
+      "filter_full": { "name": "Filter" }
+    },
+    "select": {
+      "ventilation_level": {
+        "name": "Ventilation level",
+        "state": {
+          "away": "Away",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        }
+      }
+    }
+  }
+}

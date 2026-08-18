@@ -63,10 +63,19 @@
       "analog_priority": {
         "name": "Regulation priority",
         "state": { "analog_inputs": "Analog inputs", "schedule": "Weekly schedule" }
-      }
+      },
+      "hours_away": { "name": "Runtime hours - Away" },
+      "hours_low": { "name": "Runtime hours - Low" },
+      "hours_medium": { "name": "Runtime hours - Medium" },
+      "hours_high": { "name": "Runtime hours - High" },
+      "hours_frost_protection": { "name": "Runtime hours - Frost protection" },
+      "hours_preheater": { "name": "Runtime hours - Preheater" },
+      "hours_bypass_open": { "name": "Runtime hours - Bypass open" },
+      "hours_filter": { "name": "Runtime hours - Filter" }
     },
     "binary_sensor": {
       "filter_full": { "name": "Filter" },
+      "summer_mode": { "name": "Summer mode" },
       "preheater_present": { "name": "Preheater installed" },
       "bypass_present": { "name": "Bypass installed" },
       "option_fireplace": { "name": "Fireplace option" },
@@ -100,7 +109,9 @@
       "postheater_target_temp": { "name": "Postheater target temperature" }
     },
     "button": {
-      "reset_filter": { "name": "Reset filter runtime" }
+      "reset_filter": { "name": "Reset filter runtime" },
+      "reset_faults": { "name": "Reset fault history" },
+      "start_selftest": { "name": "Start self-test" }
     },
     "select": {
       "ventilation_level": {

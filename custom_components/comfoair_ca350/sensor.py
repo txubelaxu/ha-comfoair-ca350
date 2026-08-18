@@ -180,6 +180,25 @@ CONFIG_DESCRIPTIONS: tuple[ComfoAirSensorDescription, ...] = (
         options=["analog_inputs", "schedule"],
         value_fn=lambda data: data.get("analog_priority"),
     ),
+) + tuple(
+    ComfoAirSensorDescription(
+        key=key,
+        translation_key=key,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        value_fn=(lambda k: lambda data: data.get(k))(key),
+    )
+    for key in (
+        "hours_away",
+        "hours_low",
+        "hours_medium",
+        "hours_high",
+        "hours_frost_protection",
+        "hours_preheater",
+        "hours_bypass_open",
+        "hours_filter",
+    )
 )
 
 

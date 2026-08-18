@@ -34,6 +34,7 @@ CMD_GET_RF_STATUS = (0x00, 0xE5)
 CMD_GET_ANALOG = (0x00, 0x9D)
 CMD_GET_EWT_POSTHEATER = (0x00, 0xEB)
 CMD_SET_EWT_POSTHEATER = (0x00, 0xED)
+CMD_GET_OPERATING_HOURS = (0x00, 0xDD)
 
 # Comfort temperature range accepted by the CC Ease/Luxe controllers. The
 # protocol itself allows any byte value via the (temp+20)*2 encoding, but the
@@ -322,9 +323,9 @@ class ComfoAirClient:
         raw = round((celsius + 20) * 2)
         self.query(CMD_SET_COMFORT_TEMP, [raw], expect_response=False)
 
-    def get_bypass_pct(self) -> int:
+    def get_bypass_status(self) -> dict:
         d = self.query(CMD_GET_BYPASS_STATUS)
-        return d[3]
+        return {"bypass_pct": d[3], "summer_mode": bool(d[6])}
 
     def get_faults(self) -> dict:
         d = self.query(CMD_GET_FAULTS)
@@ -341,13 +342,20 @@ class ComfoAirClient:
         # Byte order: [Störungen, Einstellungen, Selbsttest, Betriebsstunden Filter]
         self.query(CMD_RESET, [0, 0, 0, 1], expect_response=False)
 
+    def reset_faults(self) -> None:
+        """Clear the current/last/second-last/third-last fault history."""
+        self.query(CMD_RESET, [1, 0, 0, 0], expect_response=False)
+
+    def start_selftest(self) -> None:
+        self.query(CMD_RESET, [0, 0, 1, 0], expect_response=False)
+
     def poll_all(self) -> dict:
         """Query every operational (fast-changing) value group."""
         data: dict = {}
         data.update(self.get_temperatures())
         data.update(self.get_fan_status())
         data.update(self.get_ventilation_status())
-        data["bypass_pct"] = self.get_bypass_pct()
+        data.update(self.get_bypass_status())
         data.update(self.get_faults())
         return data
 
@@ -422,6 +430,26 @@ class ComfoAirClient:
         payload = [current[key] for key in _EWT_POSTHEATER_KEYS]
         self.query(CMD_SET_EWT_POSTHEATER, payload, expect_response=False)
 
+    def get_operating_hours(self) -> dict:
+        d = self.query(CMD_GET_OPERATING_HOURS)
+
+        def be(chunk: list[int]) -> int:
+            value = 0
+            for b in chunk:
+                value = (value << 8) | b
+            return value
+
+        return {
+            "hours_away": be(d[0:3]),
+            "hours_low": be(d[3:6]),
+            "hours_medium": be(d[6:9]),
+            "hours_frost_protection": be(d[9:11]),
+            "hours_preheater": be(d[11:13]),
+            "hours_bypass_open": be(d[13:15]),
+            "hours_filter": be(d[15:17]),
+            "hours_high": be(d[17:20]),
+        }
+
     def poll_config(self) -> dict:
         """Query every installation/configuration value group.
 
@@ -435,4 +463,5 @@ class ComfoAirClient:
         data.update(self.get_rf_status())
         data.update(self.get_analog_config())
         data.update(self.get_ewt_postheater())
+        data.update(self.get_operating_hours())
         return data

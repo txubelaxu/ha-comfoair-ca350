@@ -76,7 +76,7 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     data: ComfoAirData = hass.data[DOMAIN][entry.entry_id]
-    entities: list = [ComfoAirFilterFullBinarySensor(data)]
+    entities: list = [ComfoAirFilterFullBinarySensor(data), ComfoAirSummerModeBinarySensor(data)]
     entities.extend(
         ComfoAirConfigBinarySensor(data, description) for description in CONFIG_DESCRIPTIONS
     )
@@ -93,6 +93,17 @@ class ComfoAirFilterFullBinarySensor(ComfoAirEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         return self.coordinator.data.get("filter_full")
+
+
+class ComfoAirSummerModeBinarySensor(ComfoAirEntity, BinarySensorEntity):
+    _attr_translation_key = "summer_mode"
+
+    def __init__(self, data: ComfoAirData) -> None:
+        super().__init__(data, "summer_mode")
+
+    @property
+    def is_on(self) -> bool | None:
+        return self.coordinator.data.get("summer_mode")
 
 
 class ComfoAirConfigBinarySensor(ComfoAirEntity, BinarySensorEntity):

@@ -57,6 +57,14 @@ class ComfoAirCoordinator(DataUpdateCoordinator[dict]):
         await self.hass.async_add_executor_job(self.client.reset_filter)
         await self.async_request_refresh()
 
+    async def async_reset_faults(self) -> None:
+        await self.hass.async_add_executor_job(self.client.reset_faults)
+        await self.async_request_refresh()
+
+    async def async_start_selftest(self) -> None:
+        await self.hass.async_add_executor_job(self.client.start_selftest)
+        await self.async_request_refresh()
+
 
 class ComfoAirConfigCoordinator(DataUpdateCoordinator[dict]):
     """Polls slow-changing installation/configuration data."""

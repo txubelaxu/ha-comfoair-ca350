@@ -63,10 +63,19 @@
       "analog_priority": {
         "name": "Prioridad de regulación",
         "state": { "analog_inputs": "Entradas analógicas", "schedule": "Programa semanal" }
-      }
+      },
+      "hours_away": { "name": "Horas de uso - Ausente" },
+      "hours_low": { "name": "Horas de uso - Bajo" },
+      "hours_medium": { "name": "Horas de uso - Medio" },
+      "hours_high": { "name": "Horas de uso - Alto" },
+      "hours_frost_protection": { "name": "Horas de uso - Protección antihielo" },
+      "hours_preheater": { "name": "Horas de uso - Precalentador" },
+      "hours_bypass_open": { "name": "Horas de uso - Bypass abierto" },
+      "hours_filter": { "name": "Horas de uso - Filtro" }
     },
     "binary_sensor": {
       "filter_full": { "name": "Filtro" },
+      "summer_mode": { "name": "Modo verano" },
       "preheater_present": { "name": "Precalentador instalado" },
       "bypass_present": { "name": "Bypass instalado" },
       "option_fireplace": { "name": "Opción chimenea" },
@@ -100,7 +109,9 @@
       "postheater_target_temp": { "name": "Temperatura objetivo post-calentador" }
     },
     "button": {
-      "reset_filter": { "name": "Resetear horas de filtro" }
+      "reset_filter": { "name": "Resetear horas de filtro" },
+      "reset_faults": { "name": "Resetear historial de errores" },
+      "start_selftest": { "name": "Iniciar autotest" }
     },
     "select": {
       "ventilation_level": {

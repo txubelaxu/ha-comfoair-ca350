@@ -11,12 +11,19 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, REVOLUTIONS_PER_MINUTE, UnitOfTemperature
+from homeassistant.const import (
+    PERCENTAGE,
+    REVOLUTIONS_PER_MINUTE,
+    EntityCategory,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import ComfoAirData
 from .const import DOMAIN
+from .coordinator import ComfoAirCoordinator
 from .entity import ComfoAirEntity
 
 
@@ -103,6 +110,78 @@ OTHER_DESCRIPTIONS: tuple[ComfoAirSensorDescription, ...] = (
     ),
 )
 
+# Installation/configuration sensors, sourced from the slow-polled
+# ComfoAirConfigCoordinator instead of the operational one.
+CONFIG_DESCRIPTIONS: tuple[ComfoAirSensorDescription, ...] = (
+    ComfoAirSensorDescription(
+        key="unit_type",
+        translation_key="unit_type",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.ENUM,
+        options=["left", "right"],
+        value_fn=lambda data: data.get("unit_type"),
+    ),
+    ComfoAirSensorDescription(
+        key="unit_size",
+        translation_key="unit_size",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.ENUM,
+        options=["large", "small"],
+        value_fn=lambda data: data.get("unit_size"),
+    ),
+    ComfoAirSensorDescription(
+        key="enthalpy_present",
+        translation_key="enthalpy_present",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.ENUM,
+        options=["absent", "present", "no_sensor", "unknown"],
+        value_fn=lambda data: data.get("enthalpy_present"),
+    ),
+    ComfoAirSensorDescription(
+        key="ewt_present",
+        translation_key="ewt_present",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.ENUM,
+        options=["absent", "regulated", "unregulated", "unknown"],
+        value_fn=lambda data: data.get("ewt_present"),
+    ),
+    ComfoAirSensorDescription(
+        key="damper_status",
+        translation_key="damper_status",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.ENUM,
+        options=["open", "closed", "unknown"],
+        value_fn=lambda data: data.get("damper_status"),
+    ),
+    ComfoAirSensorDescription(
+        key="frost_minutes",
+        translation_key="frost_minutes",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        value_fn=lambda data: data.get("frost_minutes"),
+    ),
+    ComfoAirSensorDescription(
+        key="rf_address",
+        translation_key="rf_address",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.get("rf_address"),
+    ),
+    ComfoAirSensorDescription(
+        key="rf_id",
+        translation_key="rf_id",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.get("rf_id"),
+    ),
+    ComfoAirSensorDescription(
+        key="analog_priority",
+        translation_key="analog_priority",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.ENUM,
+        options=["analog_inputs", "schedule"],
+        value_fn=lambda data: data.get("analog_priority"),
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -118,14 +197,24 @@ async def async_setup_entry(
         if description.value_fn(data.coordinator.data) is not None:
             entities.append(ComfoAirSensor(data, description))
 
+    entities.extend(
+        ComfoAirSensor(data, description, coordinator=data.config_coordinator)
+        for description in CONFIG_DESCRIPTIONS
+    )
+
     async_add_entities(entities)
 
 
 class ComfoAirSensor(ComfoAirEntity, SensorEntity):
     entity_description: ComfoAirSensorDescription
 
-    def __init__(self, data: ComfoAirData, description: ComfoAirSensorDescription) -> None:
-        super().__init__(data, description.key)
+    def __init__(
+        self,
+        data: ComfoAirData,
+        description: ComfoAirSensorDescription,
+        coordinator: ComfoAirCoordinator | None = None,
+    ) -> None:
+        super().__init__(data, description.key, coordinator=coordinator)
         self.entity_description = description
 
     @property

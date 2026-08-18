@@ -20,11 +20,20 @@ CMD_GET_FIRMWARE = (0x00, 0x69)
 CMD_GET_FAN_STATUS = (0x00, 0x0B)
 CMD_GET_VENTILATION_LEVEL = (0x00, 0xCD)
 CMD_SET_VENTILATION_LEVEL = (0x00, 0x99)
+CMD_SET_LEVEL_PERCENTAGES = (0x00, 0xCF)
 CMD_GET_TEMPERATURES = (0x00, 0xD1)
 CMD_SET_COMFORT_TEMP = (0x00, 0xD3)
 CMD_GET_BYPASS_STATUS = (0x00, 0xDF)
 CMD_GET_FAULTS = (0x00, 0xD9)
 CMD_RESET = (0x00, 0xDB)
+CMD_GET_DELAYS = (0x00, 0xC9)
+CMD_SET_DELAYS = (0x00, 0xCB)
+CMD_GET_INSTALL_STATUS = (0x00, 0xD5)
+CMD_GET_PREHEATER_STATUS = (0x00, 0xE1)
+CMD_GET_RF_STATUS = (0x00, 0xE5)
+CMD_GET_ANALOG = (0x00, 0x9D)
+CMD_GET_EWT_POSTHEATER = (0x00, 0xEB)
+CMD_SET_EWT_POSTHEATER = (0x00, 0xED)
 
 # Comfort temperature range accepted by the CC Ease/Luxe controllers. The
 # protocol itself allows any byte value via the (temp+20)*2 encoding, but the
@@ -42,6 +51,42 @@ LEVEL_LOW = 2
 LEVEL_MEDIUM = 3
 LEVEL_HIGH = 4
 VALID_LEVELS = (LEVEL_AWAY, LEVEL_LOW, LEVEL_MEDIUM, LEVEL_HIGH)
+
+# Keys of the eight percentage fields making up the 0xCF "set level
+# percentages" block, in wire order. Since the unit only accepts writing the
+# whole block at once, set_level_percentages() reads the current values,
+# applies overrides on top, and writes the full block back.
+_LEVEL_PERCENTAGE_KEYS = (
+    "extract_pct_away",
+    "extract_pct_low",
+    "extract_pct_medium",
+    "supply_pct_away",
+    "supply_pct_low",
+    "supply_pct_medium",
+    "extract_pct_high",
+    "supply_pct_high",
+)
+
+# Keys of the eight fields making up the 0xCB "set delays" block, wire order.
+_DELAY_KEYS = (
+    "bathroom_switch_on_delay",
+    "bathroom_switch_off_delay",
+    "l1_off_delay",
+    "boost_duration",
+    "filter_weeks",
+    "rf_high_time_short",
+    "rf_high_time_long",
+    "kitchen_hood_off_delay",
+)
+
+# Keys of the five fields making up the 0xED "set EWT/postheater" block.
+_EWT_POSTHEATER_KEYS = (
+    "ewt_temp_low",
+    "ewt_temp_high",
+    "ewt_speed_pct",
+    "kitchen_hood_speed_pct",
+    "postheater_target_temp",
+)
 
 
 class ComfoAirError(Exception):
@@ -193,6 +238,8 @@ class ComfoAirClient:
         assert last_err is not None
         raise last_err
 
+    # -- Identification ----------------------------------------------------
+
     def get_firmware(self) -> dict:
         d = self.query(CMD_GET_FIRMWARE)
         return {
@@ -200,6 +247,8 @@ class ComfoAirClient:
             "minor": d[1],
             "name": bytes(d[3:13]).decode("ascii", errors="ignore").strip(),
         }
+
+    # -- Operational data (fast-polled) -------------------------------------
 
     def get_temperatures(self) -> dict:
         d = self.query(CMD_GET_TEMPERATURES)
@@ -217,6 +266,12 @@ class ComfoAirClient:
             result["temp_extract"] = temp(d[3])
         if present & 0x08:
             result["temp_exhaust"] = temp(d[4])
+        if present & 0x10:
+            result["temp_ewt"] = temp(d[6])
+        if present & 0x20:
+            result["temp_postheater"] = temp(d[7])
+        if present & 0x40:
+            result["temp_kitchenhood"] = temp(d[8])
         return result
 
     def get_fan_status(self) -> dict:
@@ -230,14 +285,36 @@ class ComfoAirClient:
             "fan_extract_rpm": round(1875000 / extract_rpm_raw) if extract_rpm_raw else 0,
         }
 
-    def get_ventilation_level(self) -> int:
+    def get_ventilation_status(self) -> dict:
         d = self.query(CMD_GET_VENTILATION_LEVEL)
-        return d[8]
+        return {
+            "extract_pct_away": d[0],
+            "extract_pct_low": d[1],
+            "extract_pct_medium": d[2],
+            "supply_pct_away": d[3],
+            "supply_pct_low": d[4],
+            "supply_pct_medium": d[5],
+            "extract_pct_current": d[6],
+            "supply_pct_current": d[7],
+            "ventilation_level": d[8],
+            "extract_fan_active": bool(d[9]),
+            "extract_pct_high": d[10],
+            "supply_pct_high": d[11],
+        }
 
     def set_ventilation_level(self, level: int) -> None:
         if level not in VALID_LEVELS:
             raise ValueError(f"Nivel de ventilación inválido: {level}")
         self.query(CMD_SET_VENTILATION_LEVEL, [level], expect_response=False)
+
+    def set_level_percentages(self, **overrides: int) -> None:
+        """Set the per-level fan speed percentages (read-modify-write)."""
+        current = self.get_ventilation_status()
+        values = {key: current[key] for key in _LEVEL_PERCENTAGE_KEYS}
+        values.update(overrides)
+        payload = [values[key] for key in _LEVEL_PERCENTAGE_KEYS]
+        payload.append(0)  # 9th byte is undocumented ("?") in the protocol spec
+        self.query(CMD_SET_LEVEL_PERCENTAGES, payload, expect_response=False)
 
     def set_comfort_temp(self, celsius: float) -> None:
         if not COMFORT_TEMP_MIN <= celsius <= COMFORT_TEMP_MAX:
@@ -265,11 +342,97 @@ class ComfoAirClient:
         self.query(CMD_RESET, [0, 0, 0, 1], expect_response=False)
 
     def poll_all(self) -> dict:
-        """Query every sensor group. Raises ComfoAirError on failure."""
+        """Query every operational (fast-changing) value group."""
         data: dict = {}
         data.update(self.get_temperatures())
         data.update(self.get_fan_status())
-        data["ventilation_level"] = self.get_ventilation_level()
+        data.update(self.get_ventilation_status())
         data["bypass_pct"] = self.get_bypass_pct()
         data.update(self.get_faults())
+        return data
+
+    # -- Installation / configuration data (slow-polled) --------------------
+
+    def get_delays(self) -> dict:
+        d = self.query(CMD_GET_DELAYS)
+        return dict(zip(_DELAY_KEYS, d[:8]))
+
+    def set_delays(self, **overrides: int) -> None:
+        """Set the timer/delay block (read-modify-write)."""
+        current = self.get_delays()
+        current.update(overrides)
+        payload = [current[key] for key in _DELAY_KEYS]
+        self.query(CMD_SET_DELAYS, payload, expect_response=False)
+
+    def get_install_status(self) -> dict:
+        d = self.query(CMD_GET_INSTALL_STATUS)
+        options = d[4]
+        return {
+            "preheater_present": bool(d[0]),
+            "bypass_present": bool(d[1]),
+            "unit_type": "left" if d[2] else "right",
+            "unit_size": "large" if d[3] else "small",
+            "option_fireplace": bool(options & 0x01),
+            "option_kitchen_hood": bool(options & 0x02),
+            "option_postheater": bool(options & 0x04),
+            "enthalpy_present": {0: "absent", 1: "present", 2: "no_sensor"}.get(
+                d[9], "unknown"
+            ),
+            "ewt_present": {0: "absent", 1: "regulated", 2: "unregulated"}.get(
+                d[10], "unknown"
+            ),
+        }
+
+    def get_preheater_status(self) -> dict:
+        d = self.query(CMD_GET_PREHEATER_STATUS)
+        return {
+            "damper_status": {0: "closed", 1: "open", 2: "unknown"}.get(d[0], "unknown"),
+            "frost_protection_active": bool(d[1]),
+            "preheater_active": bool(d[2]),
+            "frost_minutes": (d[3] << 8) | d[4],
+        }
+
+    def get_rf_status(self) -> dict:
+        d = self.query(CMD_GET_RF_STATUS)
+        return {
+            "rf_address": f"{d[0]:02X}{d[1]:02X}{d[2]:02X}{d[3]:02X}",
+            "rf_id": d[4],
+        }
+
+    def get_analog_config(self) -> dict:
+        """Analog input configuration. Most CA350 installs have none wired,
+        so only the coarse regulation priority is exposed."""
+        d = self.query(CMD_GET_ANALOG)
+        return {"analog_priority": "schedule" if d[18] else "analog_inputs"}
+
+    def get_ewt_postheater(self) -> dict:
+        d = self.query(CMD_GET_EWT_POSTHEATER)
+        return {
+            "ewt_temp_low": d[0],
+            "ewt_temp_high": d[1],
+            "ewt_speed_pct": d[2],
+            "kitchen_hood_speed_pct": d[3],
+            "postheater_target_temp": d[6],
+        }
+
+    def set_ewt_postheater(self, **overrides: int) -> None:
+        """Set the EWT/postheater block (read-modify-write)."""
+        current = self.get_ewt_postheater()
+        current.update(overrides)
+        payload = [current[key] for key in _EWT_POSTHEATER_KEYS]
+        self.query(CMD_SET_EWT_POSTHEATER, payload, expect_response=False)
+
+    def poll_config(self) -> dict:
+        """Query every installation/configuration value group.
+
+        These barely change between visits to the wall control's install
+        menu, so they are polled far less often than poll_all().
+        """
+        data: dict = {}
+        data.update(self.get_delays())
+        data.update(self.get_install_status())
+        data.update(self.get_preheater_status())
+        data.update(self.get_rf_status())
+        data.update(self.get_analog_config())
+        data.update(self.get_ewt_postheater())
         return data

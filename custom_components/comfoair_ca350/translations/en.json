@@ -26,13 +26,78 @@
       "fan_supply_rpm": { "name": "Supply fan RPM" },
       "fan_extract_rpm": { "name": "Extract fan RPM" },
       "bypass_pct": { "name": "Bypass position" },
-      "errors": { "name": "Active errors" }
+      "errors": { "name": "Active errors" },
+      "unit_type": {
+        "name": "Unit type",
+        "state": { "left": "Left", "right": "Right" }
+      },
+      "unit_size": {
+        "name": "Unit size",
+        "state": { "large": "Large", "small": "Small" }
+      },
+      "enthalpy_present": {
+        "name": "Enthalpy sensor",
+        "state": {
+          "absent": "Absent",
+          "present": "Present",
+          "no_sensor": "No sensor",
+          "unknown": "Unknown"
+        }
+      },
+      "ewt_present": {
+        "name": "Ground heat exchanger (EWT)",
+        "state": {
+          "absent": "Absent",
+          "regulated": "Regulated",
+          "unregulated": "Unregulated",
+          "unknown": "Unknown"
+        }
+      },
+      "damper_status": {
+        "name": "Bypass damper",
+        "state": { "open": "Open", "closed": "Closed", "unknown": "Unknown" }
+      },
+      "frost_minutes": { "name": "Frost protection minutes" },
+      "rf_address": { "name": "RF address" },
+      "rf_id": { "name": "RF id" },
+      "analog_priority": {
+        "name": "Regulation priority",
+        "state": { "analog_inputs": "Analog inputs", "schedule": "Weekly schedule" }
+      }
     },
     "binary_sensor": {
-      "filter_full": { "name": "Filter" }
+      "filter_full": { "name": "Filter" },
+      "preheater_present": { "name": "Preheater installed" },
+      "bypass_present": { "name": "Bypass installed" },
+      "option_fireplace": { "name": "Fireplace option" },
+      "option_kitchen_hood": { "name": "Kitchen hood option" },
+      "option_postheater": { "name": "Postheater option" },
+      "frost_protection_active": { "name": "Frost protection" },
+      "preheater_active": { "name": "Preheater" }
     },
     "number": {
-      "comfort_temp": { "name": "Comfort temperature" }
+      "comfort_temp": { "name": "Comfort temperature" },
+      "extract_pct_away": { "name": "Extract speed - Away" },
+      "extract_pct_low": { "name": "Extract speed - Low" },
+      "extract_pct_medium": { "name": "Extract speed - Medium" },
+      "extract_pct_high": { "name": "Extract speed - High" },
+      "supply_pct_away": { "name": "Supply speed - Away" },
+      "supply_pct_low": { "name": "Supply speed - Low" },
+      "supply_pct_medium": { "name": "Supply speed - Medium" },
+      "supply_pct_high": { "name": "Supply speed - High" },
+      "bathroom_switch_on_delay": { "name": "Bathroom switch on-delay" },
+      "bathroom_switch_off_delay": { "name": "Bathroom switch off-delay" },
+      "l1_off_delay": { "name": "Level 1 off-delay" },
+      "boost_duration": { "name": "Boost ventilation duration" },
+      "rf_high_time_short": { "name": "RF boost time (short press)" },
+      "rf_high_time_long": { "name": "RF boost time (long press)" },
+      "kitchen_hood_off_delay": { "name": "Kitchen hood off-delay" },
+      "filter_weeks": { "name": "Filter change interval" },
+      "ewt_temp_low": { "name": "EWT low temperature threshold" },
+      "ewt_temp_high": { "name": "EWT high temperature threshold" },
+      "ewt_speed_pct": { "name": "EWT fan override speed" },
+      "kitchen_hood_speed_pct": { "name": "Kitchen hood fan override speed" },
+      "postheater_target_temp": { "name": "Postheater target temperature" }
     },
     "button": {
       "reset_filter": { "name": "Reset filter runtime" }

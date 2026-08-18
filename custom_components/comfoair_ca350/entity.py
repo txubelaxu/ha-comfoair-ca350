@@ -14,8 +14,10 @@ class ComfoAirEntity(CoordinatorEntity[ComfoAirCoordinator]):
 
     _attr_has_entity_name = True
 
-    def __init__(self, data: ComfoAirData, key: str) -> None:
-        super().__init__(data.coordinator)
+    def __init__(
+        self, data: ComfoAirData, key: str, coordinator: ComfoAirCoordinator | None = None
+    ) -> None:
+        super().__init__(coordinator or data.coordinator)
         self._key = key
         self._attr_unique_id = f"{data.coordinator.entry.entry_id}_{key}"
         self._attr_device_info = DeviceInfo(

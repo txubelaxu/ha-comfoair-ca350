@@ -26,13 +26,78 @@
       "fan_supply_rpm": { "name": "RPM ventilador impulsión" },
       "fan_extract_rpm": { "name": "RPM ventilador extracción" },
       "bypass_pct": { "name": "Posición del bypass" },
-      "errors": { "name": "Errores activos" }
+      "errors": { "name": "Errores activos" },
+      "unit_type": {
+        "name": "Tipo de unidad",
+        "state": { "left": "Izquierda", "right": "Derecha" }
+      },
+      "unit_size": {
+        "name": "Tamaño de unidad",
+        "state": { "large": "Grande", "small": "Pequeña" }
+      },
+      "enthalpy_present": {
+        "name": "Sensor de entalpía",
+        "state": {
+          "absent": "Ausente",
+          "present": "Presente",
+          "no_sensor": "Sin sensor",
+          "unknown": "Desconocido"
+        }
+      },
+      "ewt_present": {
+        "name": "Intercambiador tierra-aire (EWT)",
+        "state": {
+          "absent": "Ausente",
+          "regulated": "Regulado",
+          "unregulated": "Sin regular",
+          "unknown": "Desconocido"
+        }
+      },
+      "damper_status": {
+        "name": "Trampilla de bypass",
+        "state": { "open": "Abierta", "closed": "Cerrada", "unknown": "Desconocido" }
+      },
+      "frost_minutes": { "name": "Minutos de protección antihielo" },
+      "rf_address": { "name": "Dirección RF" },
+      "rf_id": { "name": "ID RF" },
+      "analog_priority": {
+        "name": "Prioridad de regulación",
+        "state": { "analog_inputs": "Entradas analógicas", "schedule": "Programa semanal" }
+      }
     },
     "binary_sensor": {
-      "filter_full": { "name": "Filtro" }
+      "filter_full": { "name": "Filtro" },
+      "preheater_present": { "name": "Precalentador instalado" },
+      "bypass_present": { "name": "Bypass instalado" },
+      "option_fireplace": { "name": "Opción chimenea" },
+      "option_kitchen_hood": { "name": "Opción campana de cocina" },
+      "option_postheater": { "name": "Opción post-calentador" },
+      "frost_protection_active": { "name": "Protección antihielo" },
+      "preheater_active": { "name": "Precalentador" }
     },
     "number": {
-      "comfort_temp": { "name": "Temperatura de confort" }
+      "comfort_temp": { "name": "Temperatura de confort" },
+      "extract_pct_away": { "name": "Velocidad extracción - Ausente" },
+      "extract_pct_low": { "name": "Velocidad extracción - Bajo" },
+      "extract_pct_medium": { "name": "Velocidad extracción - Medio" },
+      "extract_pct_high": { "name": "Velocidad extracción - Alto" },
+      "supply_pct_away": { "name": "Velocidad impulsión - Ausente" },
+      "supply_pct_low": { "name": "Velocidad impulsión - Bajo" },
+      "supply_pct_medium": { "name": "Velocidad impulsión - Medio" },
+      "supply_pct_high": { "name": "Velocidad impulsión - Alto" },
+      "bathroom_switch_on_delay": { "name": "Retardo encendido interruptor baño" },
+      "bathroom_switch_off_delay": { "name": "Retardo apagado interruptor baño" },
+      "l1_off_delay": { "name": "Retardo apagado nivel 1" },
+      "boost_duration": { "name": "Duración ventilación de choque" },
+      "rf_high_time_short": { "name": "Tiempo RF alto (pulsación corta)" },
+      "rf_high_time_long": { "name": "Tiempo RF alto (pulsación larga)" },
+      "kitchen_hood_off_delay": { "name": "Retardo apagado campana cocina" },
+      "filter_weeks": { "name": "Intervalo cambio de filtro" },
+      "ewt_temp_low": { "name": "Umbral temperatura baja EWT" },
+      "ewt_temp_high": { "name": "Umbral temperatura alta EWT" },
+      "ewt_speed_pct": { "name": "Velocidad forzada EWT" },
+      "kitchen_hood_speed_pct": { "name": "Velocidad forzada campana cocina" },
+      "postheater_target_temp": { "name": "Temperatura objetivo post-calentador" }
     },
     "button": {
       "reset_filter": { "name": "Resetear horas de filtro" }

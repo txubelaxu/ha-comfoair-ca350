@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import CONF_PORT, DOMAIN
-from .coordinator import ComfoAirCoordinator
+from .coordinator import ComfoAirConfigCoordinator, ComfoAirCoordinator
 from .protocol import ComfoAirClient, ComfoAirError
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +28,7 @@ PLATFORMS = [
 class ComfoAirData:
     client: ComfoAirClient
     coordinator: ComfoAirCoordinator
+    config_coordinator: ComfoAirConfigCoordinator
     firmware: dict
 
 
@@ -51,8 +52,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = ComfoAirCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
 
+    config_coordinator = ComfoAirConfigCoordinator(hass, entry, client)
+    await config_coordinator.async_config_entry_first_refresh()
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = ComfoAirData(
-        client=client, coordinator=coordinator, firmware=firmware
+        client=client,
+        coordinator=coordinator,
+        config_coordinator=config_coordinator,
+        firmware=firmware,
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

@@ -21,8 +21,16 @@ CMD_GET_FAN_STATUS = (0x00, 0x0B)
 CMD_GET_VENTILATION_LEVEL = (0x00, 0xCD)
 CMD_SET_VENTILATION_LEVEL = (0x00, 0x99)
 CMD_GET_TEMPERATURES = (0x00, 0xD1)
+CMD_SET_COMFORT_TEMP = (0x00, 0xD3)
 CMD_GET_BYPASS_STATUS = (0x00, 0xDF)
 CMD_GET_FAULTS = (0x00, 0xD9)
+CMD_RESET = (0x00, 0xDB)
+
+# Comfort temperature range accepted by the CC Ease/Luxe controllers. The
+# protocol itself allows any byte value via the (temp+20)*2 encoding, but the
+# unit's own firmware only makes sense to drive within its usual UI range.
+COMFORT_TEMP_MIN = 15.0
+COMFORT_TEMP_MAX = 25.0
 
 # The RS232 link is timing-sensitive: sending a new command while the unit is
 # still finishing a previous reply causes framing errors / dropped bytes.
@@ -231,6 +239,12 @@ class ComfoAirClient:
             raise ValueError(f"Nivel de ventilación inválido: {level}")
         self.query(CMD_SET_VENTILATION_LEVEL, [level], expect_response=False)
 
+    def set_comfort_temp(self, celsius: float) -> None:
+        if not COMFORT_TEMP_MIN <= celsius <= COMFORT_TEMP_MAX:
+            raise ValueError(f"Temperatura de confort fuera de rango: {celsius}")
+        raw = round((celsius + 20) * 2)
+        self.query(CMD_SET_COMFORT_TEMP, [raw], expect_response=False)
+
     def get_bypass_pct(self) -> int:
         d = self.query(CMD_GET_BYPASS_STATUS)
         return d[3]
@@ -244,6 +258,11 @@ class ComfoAirClient:
             if d[1] & (1 << i):
                 errors.append(f"E{i + 1}")
         return {"errors": errors, "filter_full": bool(d[8])}
+
+    def reset_filter(self) -> None:
+        """Reset the filter runtime hour counter (Betriebsstunden Filter)."""
+        # Byte order: [Störungen, Einstellungen, Selbsttest, Betriebsstunden Filter]
+        self.query(CMD_RESET, [0, 0, 0, 1], expect_response=False)
 
     def poll_all(self) -> dict:
         """Query every sensor group. Raises ComfoAirError on failure."""

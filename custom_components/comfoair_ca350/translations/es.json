@@ -17,7 +17,6 @@
   },
   "entity": {
     "sensor": {
-      "comfort_temp": { "name": "Temperatura de confort" },
       "temp_outside": { "name": "Temperatura exterior" },
       "temp_supply": { "name": "Temperatura de impulsión" },
       "temp_extract": { "name": "Temperatura de extracción" },
@@ -31,6 +30,12 @@
     },
     "binary_sensor": {
       "filter_full": { "name": "Filtro" }
+    },
+    "number": {
+      "comfort_temp": { "name": "Temperatura de confort" }
+    },
+    "button": {
+      "reset_filter": { "name": "Resetear horas de filtro" }
     },
     "select": {
       "ventilation_level": {

@@ -35,3 +35,11 @@ class ComfoAirCoordinator(DataUpdateCoordinator[dict]):
     async def async_set_ventilation_level(self, level: int) -> None:
         await self.hass.async_add_executor_job(self.client.set_ventilation_level, level)
         await self.async_request_refresh()
+
+    async def async_set_comfort_temp(self, celsius: float) -> None:
+        await self.hass.async_add_executor_job(self.client.set_comfort_temp, celsius)
+        await self.async_request_refresh()
+
+    async def async_reset_filter(self) -> None:
+        await self.hass.async_add_executor_job(self.client.reset_filter)
+        await self.async_request_refresh()

@@ -17,7 +17,6 @@
   },
   "entity": {
     "sensor": {
-      "comfort_temp": { "name": "Comfort temperature" },
       "temp_outside": { "name": "Outside temperature" },
       "temp_supply": { "name": "Supply temperature" },
       "temp_extract": { "name": "Extract temperature" },
@@ -31,6 +30,12 @@
     },
     "binary_sensor": {
       "filter_full": { "name": "Filter" }
+    },
+    "number": {
+      "comfort_temp": { "name": "Comfort temperature" }
+    },
+    "button": {
+      "reset_filter": { "name": "Reset filter runtime" }
     },
     "select": {
       "ventilation_level": {

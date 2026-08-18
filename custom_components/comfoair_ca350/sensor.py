@@ -27,14 +27,6 @@ class ComfoAirSensorDescription(SensorEntityDescription):
 
 TEMPERATURE_DESCRIPTIONS: tuple[ComfoAirSensorDescription, ...] = (
     ComfoAirSensorDescription(
-        key="comfort_temp",
-        translation_key="comfort_temp",
-        device_class=SensorDeviceClass.TEMPERATURE,
-        state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda data: data.get("comfort_temp"),
-    ),
-    ComfoAirSensorDescription(
         key="temp_outside",
         translation_key="temp_outside",
         device_class=SensorDeviceClass.TEMPERATURE,

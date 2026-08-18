@@ -4,7 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
+from homeassistant.components.number import (
+    NumberDeviceClass,
+    NumberEntity,
+    NumberEntityDescription,
+    NumberMode,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
@@ -18,14 +23,7 @@ from .protocol import COMFORT_TEMP_MAX, COMFORT_TEMP_MIN
 
 
 @dataclass(frozen=True, kw_only=True)
-class ComfoAirNumberDescription:
-    key: str
-    translation_key: str
-    min_value: float
-    max_value: float
-    step: float = 1
-    unit: str | None = PERCENTAGE
-    entity_category: EntityCategory | None = EntityCategory.CONFIG
+class ComfoAirNumberDescription(NumberEntityDescription):
     on_config_coordinator: bool = False
     setter_method: str = "async_set_level_percentages"
     value_fn: Callable[[dict], object] = lambda data: None
@@ -35,8 +33,10 @@ LEVEL_PERCENTAGE_DESCRIPTIONS: tuple[ComfoAirNumberDescription, ...] = tuple(
     ComfoAirNumberDescription(
         key=key,
         translation_key=key,
-        min_value=0,
-        max_value=100,
+        entity_category=EntityCategory.CONFIG,
+        native_min_value=0,
+        native_max_value=100,
+        native_unit_of_measurement=PERCENTAGE,
         setter_method="async_set_level_percentages",
         value_fn=(lambda k: lambda data: data.get(k))(key),
     )
@@ -66,9 +66,10 @@ DELAY_DESCRIPTIONS: tuple[ComfoAirNumberDescription, ...] = tuple(
     ComfoAirNumberDescription(
         key=key,
         translation_key=key,
-        min_value=0,
-        max_value=255,
-        unit=UnitOfTime.MINUTES,
+        entity_category=EntityCategory.CONFIG,
+        native_min_value=0,
+        native_max_value=255,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
         on_config_coordinator=True,
         setter_method="async_set_delays",
         value_fn=(lambda k: lambda data: data.get(k))(key),
@@ -78,18 +79,19 @@ DELAY_DESCRIPTIONS: tuple[ComfoAirNumberDescription, ...] = tuple(
     ComfoAirNumberDescription(
         key="filter_weeks",
         translation_key="filter_weeks",
-        min_value=0,
-        max_value=52,
-        unit=UnitOfTime.WEEKS,
+        entity_category=EntityCategory.CONFIG,
+        native_min_value=0,
+        native_max_value=52,
+        native_unit_of_measurement=UnitOfTime.WEEKS,
         on_config_coordinator=True,
         setter_method="async_set_delays",
         value_fn=lambda data: data.get("filter_weeks"),
     ),
 )
 
-# (key, translation_key, min, max, unit) - all gated on the matching
-# temperature probe being present, and applied against the EWT/postheater
-# read-modify-write block.
+# (key, presence_key, min, max, unit) - all gated on the matching temperature
+# probe being present, and applied against the EWT/postheater read-modify-
+# write block.
 _EWT_POSTHEATER_NUMBERS = (
     ("ewt_temp_low", "temp_ewt", 0, 40, UnitOfTemperature.CELSIUS),
     ("ewt_temp_high", "temp_ewt", 0, 40, UnitOfTemperature.CELSIUS),
@@ -117,9 +119,10 @@ async def async_setup_entry(
                 ComfoAirNumberDescription(
                     key=key,
                     translation_key=key,
-                    min_value=min_value,
-                    max_value=max_value,
-                    unit=unit,
+                    entity_category=EntityCategory.CONFIG,
+                    native_min_value=min_value,
+                    native_max_value=max_value,
+                    native_unit_of_measurement=unit,
                     on_config_coordinator=True,
                     setter_method="async_set_ewt_postheater",
                     value_fn=(lambda k: lambda data: data.get(k))(key),
@@ -163,12 +166,6 @@ class ComfoAirNumber(ComfoAirEntity, NumberEntity):
         )
         super().__init__(data, description.key, coordinator=coordinator)
         self.entity_description = description
-        self._attr_translation_key = description.translation_key
-        self._attr_native_unit_of_measurement = description.unit
-        self._attr_native_min_value = description.min_value
-        self._attr_native_max_value = description.max_value
-        self._attr_native_step = description.step
-        self._attr_entity_category = description.entity_category
 
     @property
     def native_value(self) -> float | None:

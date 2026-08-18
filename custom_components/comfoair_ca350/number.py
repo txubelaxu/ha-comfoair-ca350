@@ -100,6 +100,11 @@ _EWT_POSTHEATER_NUMBERS = (
     ("postheater_target_temp", "temp_postheater", 0, 40, UnitOfTemperature.CELSIUS),
 )
 
+# Analog/RF input channels - only created for channels the unit reports as
+# present, since an unwired channel's min/max/setpoint values are meaningless.
+_ANALOG_CHANNELS = ("analog1", "analog2", "analog3", "analog4", "rf")
+_ANALOG_FIELD_SUFFIXES = ("min_pct", "max_pct", "setpoint_pct")
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -129,6 +134,28 @@ async def async_setup_entry(
                 ),
             )
         )
+
+    for name in _ANALOG_CHANNELS:
+        if not data.config_coordinator.data.get(f"{name}_present"):
+            continue
+        for suffix in _ANALOG_FIELD_SUFFIXES:
+            key = f"{name}_{suffix}"
+            entities.append(
+                ComfoAirNumber(
+                    data,
+                    ComfoAirNumberDescription(
+                        key=key,
+                        translation_key=key,
+                        entity_category=EntityCategory.CONFIG,
+                        native_min_value=0,
+                        native_max_value=100,
+                        native_unit_of_measurement=PERCENTAGE,
+                        on_config_coordinator=True,
+                        setter_method="async_set_analog_values",
+                        value_fn=(lambda k: lambda data: data.get(k))(key),
+                    ),
+                )
+            )
 
     async_add_entities(entities)
 

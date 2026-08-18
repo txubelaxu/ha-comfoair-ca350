@@ -94,3 +94,9 @@ class ComfoAirConfigCoordinator(DataUpdateCoordinator[dict]):
             lambda: self.client.set_ewt_postheater(**overrides)
         )
         await self.async_request_refresh()
+
+    async def async_set_analog_values(self, **overrides: int) -> None:
+        await self.hass.async_add_executor_job(
+            lambda: self.client.set_analog_values(**overrides)
+        )
+        await self.async_request_refresh()

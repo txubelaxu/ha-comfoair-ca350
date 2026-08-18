@@ -71,6 +71,38 @@ CONFIG_DESCRIPTIONS: tuple[ComfoAirBinarySensorDescription, ...] = (
     ),
 )
 
+# Analog/RF input channels. "Present" is always shown so it's obvious at a
+# glance which ones are wired; the regulating-mode / inverted flags are only
+# meaningful (and only created) for channels that are actually present.
+_ANALOG_CHANNELS = ("analog1", "analog2", "analog3", "analog4", "rf")
+
+ANALOG_PRESENCE_DESCRIPTIONS: tuple[ComfoAirBinarySensorDescription, ...] = tuple(
+    ComfoAirBinarySensorDescription(
+        key=f"{name}_present",
+        translation_key=f"{name}_present",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=(lambda k: lambda data: data.get(k))(f"{name}_present"),
+    )
+    for name in _ANALOG_CHANNELS
+)
+
+
+def _analog_flag_descriptions(name: str) -> tuple[ComfoAirBinarySensorDescription, ...]:
+    return (
+        ComfoAirBinarySensorDescription(
+            key=f"{name}_regulating",
+            translation_key=f"{name}_regulating",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=(lambda k: lambda data: data.get(k))(f"{name}_regulating"),
+        ),
+        ComfoAirBinarySensorDescription(
+            key=f"{name}_inverted",
+            translation_key=f"{name}_inverted",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=(lambda k: lambda data: data.get(k))(f"{name}_inverted"),
+        ),
+    )
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -80,6 +112,16 @@ async def async_setup_entry(
     entities.extend(
         ComfoAirConfigBinarySensor(data, description) for description in CONFIG_DESCRIPTIONS
     )
+    entities.extend(
+        ComfoAirConfigBinarySensor(data, description)
+        for description in ANALOG_PRESENCE_DESCRIPTIONS
+    )
+    for name in _ANALOG_CHANNELS:
+        if data.config_coordinator.data.get(f"{name}_present"):
+            entities.extend(
+                ComfoAirConfigBinarySensor(data, description)
+                for description in _analog_flag_descriptions(name)
+            )
     async_add_entities(entities)
 
 

@@ -32,6 +32,7 @@ CMD_GET_INSTALL_STATUS = (0x00, 0xD5)
 CMD_GET_PREHEATER_STATUS = (0x00, 0xE1)
 CMD_GET_RF_STATUS = (0x00, 0xE5)
 CMD_GET_ANALOG = (0x00, 0x9D)
+CMD_SET_ANALOG = (0x00, 0x9F)
 CMD_GET_EWT_POSTHEATER = (0x00, 0xEB)
 CMD_SET_EWT_POSTHEATER = (0x00, 0xED)
 CMD_GET_OPERATING_HOURS = (0x00, 0xDD)
@@ -78,6 +79,16 @@ _DELAY_KEYS = (
     "rf_high_time_short",
     "rf_high_time_long",
     "kitchen_hood_off_delay",
+)
+
+# Analog/RF input channels and their bit position in the 0x9D/0x9F presence,
+# regulating and inverted bitmaps, in wire order.
+_ANALOG_CHANNEL_BITS = (
+    ("analog1", 0x01),
+    ("analog2", 0x02),
+    ("analog3", 0x04),
+    ("analog4", 0x08),
+    ("rf", 0x10),
 )
 
 # Keys of the five fields making up the 0xED "set EWT/postheater" block.
@@ -408,10 +419,46 @@ class ComfoAirClient:
         }
 
     def get_analog_config(self) -> dict:
-        """Analog input configuration. Most CA350 installs have none wired,
-        so only the coarse regulation priority is exposed."""
+        """Full analog/RF input configuration, per channel."""
         d = self.query(CMD_GET_ANALOG)
-        return {"analog_priority": "schedule" if d[18] else "analog_inputs"}
+        present, regulating, inverted = d[0], d[1], d[2]
+        result: dict = {"analog_priority": "schedule" if d[18] else "analog_inputs"}
+        offset = 3
+        for name, bit in _ANALOG_CHANNEL_BITS:
+            result[f"{name}_present"] = bool(present & bit)
+            result[f"{name}_regulating"] = bool(regulating & bit)
+            result[f"{name}_inverted"] = bool(inverted & bit)
+            result[f"{name}_min_pct"] = d[offset]
+            result[f"{name}_max_pct"] = d[offset + 1]
+            result[f"{name}_setpoint_pct"] = d[offset + 2]
+            offset += 3
+        return result
+
+    def set_analog_values(self, **overrides: int) -> None:
+        """Set analog/RF input min/max/setpoint values (read-modify-write).
+
+        Presence, regulating mode, inversion and priority are installation
+        facts, not tunable values, so they are preserved unchanged.
+        """
+        d = self.query(CMD_GET_ANALOG)
+        values: dict = {}
+        offset = 3
+        for name, _bit in _ANALOG_CHANNEL_BITS:
+            values[f"{name}_min_pct"] = d[offset]
+            values[f"{name}_max_pct"] = d[offset + 1]
+            values[f"{name}_setpoint_pct"] = d[offset + 2]
+            offset += 3
+        values.update(overrides)
+
+        payload = [d[0], d[1], d[2]]
+        for name, _bit in _ANALOG_CHANNEL_BITS:
+            payload += [
+                values[f"{name}_min_pct"],
+                values[f"{name}_max_pct"],
+                values[f"{name}_setpoint_pct"],
+            ]
+        payload.append(d[18])
+        self.query(CMD_SET_ANALOG, payload, expect_response=False)
 
     def get_ewt_postheater(self) -> dict:
         d = self.query(CMD_GET_EWT_POSTHEATER)

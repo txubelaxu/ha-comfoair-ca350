@@ -384,14 +384,12 @@ class ComfoAirClient:
         d = self.query(CMD_GET_FAN_STATUS)
         supply_rpm_raw = (d[2] << 8) | d[3]
         extract_rpm_raw = (d[4] << 8) | d[5]
-        result = {
+        return {
             "fan_supply_pct": d[0],
             "fan_extract_pct": d[1],
             "fan_supply_rpm": round(1875000 / supply_rpm_raw) if supply_rpm_raw else 0,
             "fan_extract_rpm": round(1875000 / extract_rpm_raw) if extract_rpm_raw else 0,
         }
-        _LOGGER.warning("DIAG get_fan_status raw=%s -> %s", d, result)
-        return result
 
     def get_ventilation_status(self) -> dict:
         d = self.query(CMD_GET_VENTILATION_LEVEL)
@@ -488,14 +486,6 @@ class ComfoAirClient:
         data: dict = dict(previous) if previous else {}
         self._safe_update(data, previous, _TEMP_KEYS, self.get_temperatures)
         self._safe_update(data, previous, _FAN_KEYS, self.get_fan_status)
-        _LOGGER.warning(
-            "DIAG poll_all after fan: fan_pct=%s,%s fan_rpm=%s,%s id(data)=%s",
-            data.get("fan_supply_pct"),
-            data.get("fan_extract_pct"),
-            data.get("fan_supply_rpm"),
-            data.get("fan_extract_rpm"),
-            id(data),
-        )
         self._safe_update(data, previous, _VENT_KEYS, self.get_ventilation_status)
         self._safe_update(data, previous, _BYPASS_KEYS, self.get_bypass_status)
         self._safe_update(data, previous, _FAULTS_KEYS, self.get_faults)

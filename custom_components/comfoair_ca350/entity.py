@@ -1,9 +1,6 @@
 """Common base entity for the Zehnder ComfoAir 350 integration."""
 from __future__ import annotations
 
-import logging
-
-from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -11,25 +8,11 @@ from . import ComfoAirData
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import ComfoAirCoordinator
 
-_LOGGER = logging.getLogger(__name__)
-
 
 class ComfoAirEntity(CoordinatorEntity[ComfoAirCoordinator]):
     """Base entity tying every platform entity to the same device."""
 
     _attr_has_entity_name = True
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        if self._key in ("fan_supply_pct", "fan_supply_rpm"):
-            _LOGGER.warning(
-                "DIAG update key=%s entity_id=%s platform_state=%s has_platform=%s",
-                self._key,
-                self.entity_id,
-                self._platform_state,
-                self.platform is not None,
-            )
-        super()._handle_coordinator_update()
 
     def __init__(
         self, data: ComfoAirData, key: str, coordinator: ComfoAirCoordinator | None = None

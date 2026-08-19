@@ -6,6 +6,7 @@ Validated against a real CA350 Luxe unit (firmware 3.70).
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 import time
@@ -213,6 +214,17 @@ class ComfoAirClient:
         # one can block waiting for bytes the other thread already consumed
         # (observed in practice as a full polling stall with no error logged).
         self._lock = threading.Lock()
+        # Coordinators await this from the event loop, *before* dispatching
+        # their executor job, so the two poll_all()/poll_config() calls never
+        # even run concurrently on the executor's thread pool. A raw
+        # threading.Lock alone (held only around each individual command)
+        # still let both coordinators interleave their own retry loops on
+        # shared executor threads under load - fine-grained enough to desync
+        # a multi-command poll cycle (observed: some fields kept updating
+        # every cycle while others in the same poll silently stopped, with
+        # no error ever logged). Serializing whole poll cycles at the async
+        # layer removes that interleaving entirely.
+        self.async_lock = asyncio.Lock()
 
     def connect(self) -> None:
         self._serial = serial.Serial(
@@ -466,7 +478,12 @@ class ComfoAirClient:
 
     def poll_all(self, previous: dict | None = None) -> dict:
         """Query every operational (fast-changing) value group."""
-        data: dict = {}
+        # Seeded from the last successful poll: some groups only include a
+        # subset of their keys on success (e.g. get_temperatures() reports
+        # only the sensors the unit says are present), and without a
+        # baseline those keys would silently vanish from the result instead
+        # of keeping their last known value.
+        data: dict = dict(previous) if previous else {}
         self._safe_update(data, previous, _TEMP_KEYS, self.get_temperatures)
         self._safe_update(data, previous, _FAN_KEYS, self.get_fan_status)
         self._safe_update(data, previous, _VENT_KEYS, self.get_ventilation_status)
@@ -607,7 +624,7 @@ class ComfoAirClient:
         These barely change between visits to the wall control's install
         menu, so they are polled far less often than poll_all().
         """
-        data: dict = {}
+        data: dict = dict(previous) if previous else {}
         self._safe_update(data, previous, _DELAY_KEYS, self.get_delays)
         self._safe_update(data, previous, _INSTALL_KEYS, self.get_install_status)
         self._safe_update(data, previous, _PREHEATER_STATUS_KEYS, self.get_preheater_status)

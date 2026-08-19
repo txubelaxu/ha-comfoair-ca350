@@ -23,9 +23,11 @@ class ComfoAirEntity(CoordinatorEntity[ComfoAirCoordinator]):
     def _handle_coordinator_update(self) -> None:
         if self._key in ("fan_supply_pct", "fan_supply_rpm"):
             _LOGGER.warning(
-                "DIAG _handle_coordinator_update fired key=%s entity_id=%s",
+                "DIAG update key=%s entity_id=%s platform_state=%s has_platform=%s",
                 self._key,
                 self.entity_id,
+                self._platform_state,
+                self.platform is not None,
             )
         super()._handle_coordinator_update()
 

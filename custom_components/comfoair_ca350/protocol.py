@@ -7,6 +7,7 @@ Validated against a real CA350 Luxe unit (firmware 3.70).
 from __future__ import annotations
 
 import logging
+import threading
 import time
 
 import serial
@@ -206,6 +207,12 @@ class ComfoAirClient:
         self._port = port
         self._timeout = timeout
         self._serial: serial.Serial | None = None
+        # The fast (30s) and slow (5min) coordinators both drive this same
+        # client from their own executor threads. Without serializing access,
+        # their reads/writes can interleave on the wire (byte corruption) or
+        # one can block waiting for bytes the other thread already consumed
+        # (observed in practice as a full polling stall with no error logged).
+        self._lock = threading.Lock()
 
     def connect(self) -> None:
         self._serial = serial.Serial(
@@ -313,12 +320,15 @@ class ComfoAirClient:
         last_err: ComfoAirError | None = None
         for attempt in range(retries + 1):
             try:
-                return self._query_once(cmd, data, expect_response)
+                with self._lock:
+                    return self._query_once(cmd, data, expect_response)
             except ComfoAirError as err:
                 last_err = err
-                _LOGGER.debug("Fallo en intento %s de %s: %s", attempt + 1, cmd, err)
-                if attempt < retries:
-                    time.sleep(RETRY_BACKOFF * (attempt + 1))
+            except serial.SerialException as err:
+                last_err = ComfoAirError(f"Error de puerto serie: {err}")
+            _LOGGER.debug("Fallo en intento %s de %s: %s", attempt + 1, cmd, last_err)
+            if attempt < retries:
+                time.sleep(RETRY_BACKOFF * (attempt + 1))
         assert last_err is not None
         raise last_err
 
